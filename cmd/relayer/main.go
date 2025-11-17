@@ -10,7 +10,13 @@ import (
 
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/blockchain"
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/config"
+	"github.com/EmekaIwuagwu/metabridge-hub/internal/crypto"
+	evmCrypto "github.com/EmekaIwuagwu/metabridge-hub/internal/crypto/evm"
+	ed25519Crypto "github.com/EmekaIwuagwu/metabridge-hub/internal/crypto/ed25519"
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/database"
+	"github.com/EmekaIwuagwu/metabridge-hub/internal/queue"
+	"github.com/EmekaIwuagwu/metabridge-hub/internal/relayer"
+	"github.com/EmekaIwuagwu/metabridge-hub/internal/types"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -63,13 +69,38 @@ func main() {
 		Int("clients", len(clients)).
 		Msg("Blockchain clients initialized")
 
-	// TODO: Create and start relayer workers
-	// This would involve:
-	// 1. Connecting to message queue (NATS)
-	// 2. Creating worker pool
-	// 3. Processing messages from queue
-	// 4. Validating multi-sig signatures
-	// 5. Broadcasting transactions to destination chains
+	// Connect to message queue
+	q, err := queue.NewNATSQueue(&cfg.Queue, logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to connect to message queue")
+	}
+	defer q.Close()
+
+	logger.Info().Msg("Message queue connected")
+
+	// Create signers for each chain
+	signers, err := createSigners(cfg, logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create signers")
+	}
+
+	logger.Info().
+		Int("signers", len(signers)).
+		Msg("Signers initialized")
+
+	// Create and start relayer
+	relayer, err := relayer.NewRelayer(cfg, db, q, clients, signers, logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create relayer")
+	}
+
+	// Start relayer workers
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := relayer.Start(ctx); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to start relayer")
+	}
 
 	logger.Info().
 		Int("workers", cfg.Relayer.Workers).
@@ -83,6 +114,11 @@ func main() {
 	logger.Info().Msg("Shutdown signal received")
 
 	// Graceful shutdown
+	cancel()
+	if err := relayer.Stop(); err != nil {
+		logger.Error().Err(err).Msg("Error stopping relayer")
+	}
+
 	logger.Info().Msg("Relayer service stopped")
 }
 
@@ -104,4 +140,53 @@ func setupLogger() zerolog.Logger {
 		Timestamp().
 		Caller().
 		Logger()
+}
+
+func createSigners(cfg *config.Config, logger zerolog.Logger) (map[string]crypto.UniversalSigner, error) {
+	signers := make(map[string]crypto.UniversalSigner)
+
+	for _, chain := range cfg.Chains {
+		var signer crypto.UniversalSigner
+		var err error
+
+		switch chain.Type {
+		case types.ChainTypeEVM:
+			// In production, load private key from secure storage (HSM, KMS, etc.)
+			// For now, we'll create a placeholder signer
+			// You would use: evmCrypto.NewECDSASigner(privateKeyHex)
+			logger.Warn().
+				Str("chain", chain.Name).
+				Msg("Using placeholder signer - configure proper key management in production")
+
+			// Create a test signer for development
+			// In production, replace with actual key loading
+			signer, err = evmCrypto.NewECDSASigner("0000000000000000000000000000000000000000000000000000000000000001")
+			if err != nil {
+				return nil, fmt.Errorf("failed to create EVM signer for %s: %w", chain.Name, err)
+			}
+
+		case types.ChainTypeSolana, types.ChainTypeNEAR:
+			// In production, load Ed25519 private key from secure storage
+			logger.Warn().
+				Str("chain", chain.Name).
+				Msg("Using placeholder signer - configure proper key management in production")
+
+			// Create a test signer for development
+			signer, err = ed25519Crypto.NewEd25519Signer(nil) // nil will generate random key
+			if err != nil {
+				return nil, fmt.Errorf("failed to create Ed25519 signer for %s: %w", chain.Name, err)
+			}
+
+		default:
+			return nil, fmt.Errorf("unsupported chain type: %s", chain.Type)
+		}
+
+		signers[chain.Name] = signer
+		logger.Info().
+			Str("chain", chain.Name).
+			Str("type", string(chain.Type)).
+			Msg("Signer created")
+	}
+
+	return signers, nil
 }

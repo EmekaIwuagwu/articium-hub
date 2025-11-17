@@ -11,6 +11,9 @@ import (
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/blockchain"
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/config"
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/database"
+	"github.com/EmekaIwuagwu/metabridge-hub/internal/listener/evm"
+	"github.com/EmekaIwuagwu/metabridge-hub/internal/queue"
+	"github.com/EmekaIwuagwu/metabridge-hub/internal/types"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -62,9 +65,72 @@ func main() {
 		Int("clients", len(clients)).
 		Msg("Blockchain clients initialized")
 
-	// TODO: Create and start listeners for each chain
-	// This would involve creating EVM, Solana, and NEAR listeners
-	// and starting them in separate goroutines
+	// Connect to message queue
+	q, err := queue.NewNATSQueue(&cfg.Queue, logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to connect to message queue")
+	}
+	defer q.Close()
+
+	logger.Info().Msg("Message queue connected")
+
+	// Create and start listeners for each chain
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start listeners based on chain type
+	for _, chainCfg := range cfg.Chains {
+		switch chainCfg.Type {
+		case types.ChainTypeEVM:
+			evmClient, ok := clients[chainCfg.Name].(*blockchain.EVMClientAdapter)
+			if !ok {
+				logger.Fatal().
+					Str("chain", chainCfg.Name).
+					Msg("Failed to cast client to EVM client")
+			}
+
+			listener, err := evm.NewListener(evmClient.Client, &chainCfg, logger)
+			if err != nil {
+				logger.Fatal().
+					Err(err).
+					Str("chain", chainCfg.Name).
+					Msg("Failed to create EVM listener")
+			}
+
+			// Start listener
+			if err := listener.Start(ctx); err != nil {
+				logger.Fatal().
+					Err(err).
+					Str("chain", chainCfg.Name).
+					Msg("Failed to start listener")
+			}
+
+			// Start event processor
+			go processEvents(ctx, listener, q, db, logger, chainCfg.Name)
+
+			logger.Info().
+				Str("chain", chainCfg.Name).
+				Msg("EVM listener started")
+
+		case types.ChainTypeSolana:
+			// TODO: Implement Solana listener
+			logger.Info().
+				Str("chain", chainCfg.Name).
+				Msg("Solana listener not yet implemented")
+
+		case types.ChainTypeNEAR:
+			// TODO: Implement NEAR listener
+			logger.Info().
+				Str("chain", chainCfg.Name).
+				Msg("NEAR listener not yet implemented")
+
+		default:
+			logger.Warn().
+				Str("chain", chainCfg.Name).
+				Str("type", string(chainCfg.Type)).
+				Msg("Unsupported chain type")
+		}
+	}
 
 	logger.Info().Msg("All listeners started")
 
@@ -76,6 +142,7 @@ func main() {
 	logger.Info().Msg("Shutdown signal received")
 
 	// Graceful shutdown
+	cancel()
 	logger.Info().Msg("Listener service stopped")
 }
 
@@ -97,4 +164,47 @@ func setupLogger() zerolog.Logger {
 		Timestamp().
 		Caller().
 		Logger()
+}
+
+// processEvents processes events from a listener and publishes them to the queue
+func processEvents(ctx context.Context, listener *evm.Listener, q queue.Queue, db *database.DB, logger zerolog.Logger, chainName string) {
+	eventLogger := logger.With().Str("chain", chainName).Str("component", "event-processor").Logger()
+	eventLogger.Info().Msg("Event processor started")
+
+	for {
+		select {
+		case <-ctx.Done():
+			eventLogger.Info().Msg("Event processor stopped")
+			return
+
+		case msg, ok := <-listener.EventChan():
+			if !ok {
+				eventLogger.Warn().Msg("Event channel closed")
+				return
+			}
+
+			// Save message to database
+			if err := db.SaveMessage(ctx, msg); err != nil {
+				eventLogger.Error().
+					Err(err).
+					Str("message_id", msg.ID).
+					Msg("Failed to save message to database")
+				continue
+			}
+
+			// Publish to queue
+			if err := q.Publish(ctx, msg); err != nil {
+				eventLogger.Error().
+					Err(err).
+					Str("message_id", msg.ID).
+					Msg("Failed to publish message to queue")
+				continue
+			}
+
+			eventLogger.Info().
+				Str("message_id", msg.ID).
+				Str("type", string(msg.Type)).
+				Msg("Message published to queue")
+		}
+	}
 }

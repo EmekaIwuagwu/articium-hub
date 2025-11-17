@@ -1,0 +1,36 @@
+[toolchain]
+
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+solana_bridge = "BrdgE1111111111111111111111111111111111111111"
+
+[programs.devnet]
+solana_bridge = "BrdgE1111111111111111111111111111111111111111"
+
+[programs.mainnet]
+solana_bridge = "BrdgE1111111111111111111111111111111111111111"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 5000
+
+[[test.validator.account]]
+address = "BrdgE1111111111111111111111111111111111111111"
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+
+[[test.validator.clone]]
+address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
