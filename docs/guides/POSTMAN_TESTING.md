@@ -1,4 +1,4 @@
-# Postman Testing Guide for Metabridge Hub
+# Postman Testing Guide for Metabridge Engine
 
 Complete guide to test the Metabridge API using Postman.
 

@@ -4,7 +4,7 @@
  * Cross-Chain Transfer Example
  *
  * This script demonstrates how to perform a cross-chain token transfer
- * from one chain to another using the Metabridge Hub.
+ * from one chain to another using the Metabridge Engine.
  *
  * Example: Transfer tokens from Polygon to Avalanche
  */

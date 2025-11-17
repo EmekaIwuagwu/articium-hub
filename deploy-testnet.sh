@@ -2,7 +2,7 @@
 set -e
 
 ##############################################################################
-# Metabridge Hub - Complete Testnet Deployment Script
+# Metabridge Engine - Complete Testnet Deployment Script
 #
 # This script deploys the entire Metabridge infrastructure for testing:
 # - Infrastructure (PostgreSQL, NATS, Redis, Monitoring)
@@ -258,7 +258,7 @@ verify_deployment() {
 show_status() {
     echo ""
     echo "======================================================================"
-    echo -e "${GREEN}Metabridge Hub Testnet - Deployment Complete!${NC}"
+    echo -e "${GREEN}Metabridge Engine Testnet - Deployment Complete!${NC}"
     echo "======================================================================"
     echo ""
     echo "📊 Service URLs:"
@@ -312,7 +312,7 @@ cleanup_on_error() {
 main() {
     echo ""
     echo "======================================================================"
-    echo "  Metabridge Hub - Testnet Deployment"
+    echo "  Metabridge Engine - Testnet Deployment"
     echo "======================================================================"
     echo ""
 

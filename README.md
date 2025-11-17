@@ -1,4 +1,4 @@
-# Metabridge Hub - Production-Grade Multi-Chain Bridge Protocol
+# Metabridge Engine - Production-Grade Multi-Chain Bridge Protocol
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org)

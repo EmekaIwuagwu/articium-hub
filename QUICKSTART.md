@@ -1,6 +1,6 @@
-# Metabridge Hub - Quick Start Guide
+# Metabridge Engine - Quick Start Guide
 
-Get the Metabridge Hub running locally in minutes!
+Get the Metabridge Engine running locally in minutes!
 
 ## 🚀 One-Command Deployment
 

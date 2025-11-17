@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-This runbook guides you through deploying the Metabridge Hub bridge protocol to testnet and mainnet environments.
+This runbook guides you through deploying the Metabridge Engine bridge protocol to testnet and mainnet environments.
 
 ## Table of Contents
 
