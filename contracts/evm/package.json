@@ -1,0 +1,46 @@
+{
+  "name": "metabridge-contracts",
+  "version": "1.0.0",
+  "description": "Metabridge Hub - Multi-chain Bridge Smart Contracts",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:polygon-amoy": "hardhat run scripts/deploy.js --network polygon-amoy",
+    "deploy:bnb-testnet": "hardhat run scripts/deploy.js --network bnb-testnet",
+    "deploy:avalanche-fuji": "hardhat run scripts/deploy.js --network avalanche-fuji",
+    "deploy:ethereum-sepolia": "hardhat run scripts/deploy.js --network ethereum-sepolia",
+    "deploy:polygon-mainnet": "hardhat run scripts/deploy.js --network polygon-mainnet",
+    "deploy:bnb-mainnet": "hardhat run scripts/deploy.js --network bnb-mainnet",
+    "deploy:avalanche-mainnet": "hardhat run scripts/deploy.js --network avalanche-mainnet",
+    "deploy:ethereum-mainnet": "hardhat run scripts/deploy.js --network ethereum-mainnet",
+    "verify:polygon-amoy": "hardhat verify --network polygon-amoy",
+    "verify:bnb-testnet": "hardhat verify --network bnb-testnet",
+    "verify:avalanche-fuji": "hardhat verify --network avalanche-fuji",
+    "deploy-all-testnet": "npm run deploy:polygon-amoy && npm run deploy:bnb-testnet && npm run deploy:avalanche-fuji && npm run deploy:ethereum-sepolia",
+    "flatten": "hardhat flatten contracts/BridgeBase.sol > flattened/BridgeBase_flat.sol"
+  },
+  "keywords": [
+    "bridge",
+    "cross-chain",
+    "ethereum",
+    "polygon",
+    "bnb",
+    "avalanche"
+  ],
+  "author": "Metabridge Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.0.0",
+    "hardhat": "^2.19.0",
+    "hardhat-gas-reporter": "^1.0.9",
+    "solidity-coverage": "^0.8.5"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "@openzeppelin/contracts-upgradeable": "^5.0.1",
+    "dotenv": "^16.3.1"
+  }
+}
