@@ -20,7 +20,7 @@ log_success() {
 
 echo ""
 echo "======================================================================"
-echo "  Stopping Metabridge Hub Testnet"
+echo "  Stopping Metabridge Engine Testnet"
 echo "======================================================================"
 echo ""
 

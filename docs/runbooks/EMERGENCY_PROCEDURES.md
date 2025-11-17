@@ -1,6 +1,6 @@
 # Emergency Procedures
 
-This document outlines procedures for handling critical incidents and emergency situations with the Metabridge Hub.
+This document outlines procedures for handling critical incidents and emergency situations with the Metabridge Engine.
 
 ## Table of Contents
 

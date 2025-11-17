@@ -1,6 +1,6 @@
 # Monitoring and Observability Runbook
 
-This guide covers monitoring, alerting, and observability for the Metabridge Hub bridge protocol.
+This guide covers monitoring, alerting, and observability for the Metabridge Engine bridge protocol.
 
 ## Table of Contents
 

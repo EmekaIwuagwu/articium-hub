@@ -1,6 +1,6 @@
 # NEAR Bridge Contract
 
-Production-ready NEAR smart contract for the Metabridge Hub cross-chain bridge protocol.
+Production-ready NEAR smart contract for the Metabridge Engine cross-chain bridge protocol.
 
 ## Features
 

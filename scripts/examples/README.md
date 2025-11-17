@@ -1,6 +1,6 @@
 # Cross-Chain Transfer Examples
 
-This directory contains example scripts for performing cross-chain transfers using the Metabridge Hub.
+This directory contains example scripts for performing cross-chain transfers using the Metabridge Engine.
 
 ## Prerequisites
 
