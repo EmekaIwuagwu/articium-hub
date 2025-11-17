@@ -1,0 +1,191 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: metabridge-postgres-testnet
+    environment:
+      POSTGRES_DB: metabridge_testnet
+      POSTGRES_USER: bridge_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bridge_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_testnet:/var/lib/postgresql/data
+      - ./internal/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bridge_user -d metabridge_testnet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - metabridge-testnet
+
+  # NATS Message Queue
+  nats:
+    image: nats:2.10-alpine
+    container_name: metabridge-nats-testnet
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command:
+      - "--jetstream"
+      - "--store_dir=/data"
+      - "--http_port=8222"
+    volumes:
+      - nats_data_testnet:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - metabridge-testnet
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: metabridge-redis-testnet
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_testnet:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - metabridge-testnet
+
+  # Listener Service
+  listener:
+    build:
+      context: .
+      dockerfile: ./deployments/docker/Dockerfile.listener
+    container_name: metabridge-listener-testnet
+    environment:
+      BRIDGE_ENVIRONMENT: testnet
+      DB_HOST: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-bridge_password}
+      ALCHEMY_API_KEY: ${ALCHEMY_API_KEY}
+      INFURA_API_KEY: ${INFURA_API_KEY}
+      HELIUS_API_KEY: ${HELIUS_API_KEY}
+      TESTNET_KEYSTORE_PASSWORD: ${TESTNET_KEYSTORE_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config:ro
+      - ./keystore/testnet:/app/keystore/testnet:ro
+    networks:
+      - metabridge-testnet
+    restart: unless-stopped
+
+  # Relayer Service
+  relayer:
+    build:
+      context: .
+      dockerfile: ./deployments/docker/Dockerfile.relayer
+    container_name: metabridge-relayer-testnet
+    environment:
+      BRIDGE_ENVIRONMENT: testnet
+      DB_HOST: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-bridge_password}
+      ALCHEMY_API_KEY: ${ALCHEMY_API_KEY}
+      INFURA_API_KEY: ${INFURA_API_KEY}
+      HELIUS_API_KEY: ${HELIUS_API_KEY}
+      TESTNET_KEYSTORE_PASSWORD: ${TESTNET_KEYSTORE_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config:ro
+      - ./keystore/testnet:/app/keystore/testnet:ro
+    networks:
+      - metabridge-testnet
+    restart: unless-stopped
+
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: ./deployments/docker/Dockerfile.api
+    container_name: metabridge-api-testnet
+    environment:
+      BRIDGE_ENVIRONMENT: testnet
+      DB_HOST: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-bridge_password}
+      ALCHEMY_API_KEY: ${ALCHEMY_API_KEY}
+      INFURA_API_KEY: ${INFURA_API_KEY}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config:ro
+    networks:
+      - metabridge-testnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: metabridge-prometheus-testnet
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/monitoring/prometheus-testnet.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data_testnet:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - metabridge-testnet
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: metabridge-grafana-testnet
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data_testnet:/var/lib/grafana
+      - ./config/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - metabridge-testnet
+    depends_on:
+      - prometheus
+
+networks:
+  metabridge-testnet:
+    driver: bridge
+
+volumes:
+  postgres_data_testnet:
+  nats_data_testnet:
+  redis_data_testnet:
+  prometheus_data_testnet:
+  grafana_data_testnet:

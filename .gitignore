@@ -1,0 +1,97 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.testnet
+.env.mainnet
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+.DS_Store
+
+# Keystore files (IMPORTANT: Never commit private keys!)
+keystore/
+*.json
+*.key
+*.pem
+
+# Smart contract artifacts
+contracts/evm/artifacts/
+contracts/evm/cache/
+contracts/evm/typechain/
+contracts/evm/deployments/
+contracts/solana/target/
+contracts/solana/.anchor/
+contracts/near/res/
+contracts/near/target/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Docker volumes
+docker-data/
+
+# Build artifacts
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Coverage
+coverage/
+*.coverprofile
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Compiled contracts
+*.abi
+*.bin
+
+# NPM
+package-lock.json
+yarn.lock
+
+# Hardhat
+.hardhat/
+
+# Configuration (keep templates, ignore actual configs with secrets)
+# config/*.local.yaml
+
+# Kubernetes secrets
+*.sealed.yaml
