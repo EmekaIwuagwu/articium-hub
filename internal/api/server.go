@@ -10,6 +10,7 @@ import (
 
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/config"
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/database"
+	"github.com/EmekaIwuagwu/metabridge-hub/internal/routing"
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/types"
 	"github.com/EmekaIwuagwu/metabridge-hub/internal/webhooks"
 	"github.com/gorilla/mux"
@@ -27,6 +28,7 @@ type Server struct {
 	webhookRegistry *webhooks.Registry
 	webhookDelivery *webhooks.DeliveryService
 	trackingService *webhooks.TrackingService
+	routingService  *routing.Service
 }
 
 // NewServer creates a new API server
@@ -43,6 +45,9 @@ func NewServer(
 	trackingService := webhooks.NewTrackingService(db, logger)
 	webhookDelivery := webhooks.NewDeliveryService(nil, webhookRegistry, db, logger)
 
+	// Initialize routing service
+	routingService := routing.NewService(db, nil, logger)
+
 	s := &Server{
 		config:          cfg,
 		db:              db,
@@ -52,10 +57,14 @@ func NewServer(
 		webhookRegistry: webhookRegistry,
 		webhookDelivery: webhookDelivery,
 		trackingService: trackingService,
+		routingService:  routingService,
 	}
 
 	// Start webhook delivery service
 	go webhookDelivery.Start(context.Background())
+
+	// Start routing service
+	go routingService.Start(context.Background())
 
 	// Setup routes
 	s.setupRoutes()
@@ -131,6 +140,16 @@ func (s *Server) setupRoutes() {
 	v1.HandleFunc("/track/{id}/events", s.handleRecordTimelineEvent).Methods("POST")
 	v1.HandleFunc("/track/stats", s.handleTrackingStats).Methods("GET")
 	v1.HandleFunc("/track/search", s.handleSearchMessages).Methods("GET")
+
+	// Routing endpoints
+	v1.HandleFunc("/routes/find", s.handleFindRoutes).Methods("POST")
+	v1.HandleFunc("/routes/{id}", s.handleGetRoute).Methods("GET")
+	v1.HandleFunc("/routes/{id}/execute", s.handleExecuteRoute).Methods("POST")
+	v1.HandleFunc("/routes/topology", s.handleGetChainTopology).Methods("GET")
+	v1.HandleFunc("/routes/liquidity", s.handleGetLiquidity).Methods("GET")
+	v1.HandleFunc("/routes/cache/stats", s.handleGetRouteCacheStats).Methods("GET")
+	v1.HandleFunc("/routes/cache/invalidate", s.handleInvalidateCache).Methods("POST")
+	v1.HandleFunc("/routes/estimate", s.handleGetRouteEstimate).Methods("GET")
 
 	// Apply middleware
 	s.router.Use(s.loggingMiddleware)
