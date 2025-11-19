@@ -1,0 +1,18 @@
+[Unit]
+Description=Metabridge API Server
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/projects/metabridge-engine-hub
+Environment="PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/root/projects/metabridge-engine-hub/bin/api -config config/config.production.yaml
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

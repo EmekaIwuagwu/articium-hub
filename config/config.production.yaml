@@ -1,0 +1,180 @@
+environment: "testnet"
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  tls_enabled: false
+  read_timeout: "30s"
+  write_timeout: "30s"
+  max_header_bytes: 1048576
+
+database:
+  host: "localhost"
+  port: 5432
+  database: "metabridge_production"
+  username: "bridge_user"
+  password: "secure_bridge_pass_2024"
+  ssl_mode: "disable"
+  max_open_conns: 25
+  max_idle_conns: 5
+  max_lifetime: "5m"
+
+queue:
+  type: "nats"
+  urls:
+    - "nats://localhost:4222"
+  subject: "bridge.messages"
+  stream_name: "BRIDGE_MESSAGES"
+  max_retries: 3
+
+cache:
+  type: "redis"
+  addresses:
+    - "localhost:6379"
+  password: ""
+  db: 0
+  ttl: "1h"
+
+relayer:
+  workers: 5
+  max_retries: 3
+  retry_backoff: "5s"
+  processing_timeout: "2m"
+  enable_circuit_breaker: false
+  circuit_breaker_threshold: 5
+  batch_size: 10
+
+security:
+  required_signatures: 2
+  validator_addresses:
+    - "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
+    - "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199"
+    - "0xdD2FD4581271e230360230F9337D5c0430Bf44C0"
+  max_transaction_amount: "10000"
+  daily_volume_limit: "100000"
+  enable_rate_limiting: true
+  rate_limit_per_hour: 100
+  rate_limit_per_address: 20
+  enable_emergency_pause: false
+  enable_fraud_detection: false
+  large_transaction_threshold: "5000"
+
+crypto:
+  evm_keystore_path: "./keystore/testnet/evm_validator.json"
+  solana_keystore_path: "./keystore/testnet/solana_validator.json"
+  near_keystore_path: "./keystore/testnet/near_validator.json"
+  password_env_var: "TESTNET_KEYSTORE_PASSWORD"
+  use_aws_kms: false
+
+monitoring:
+  prometheus_port: 9090
+  enable_tracing: false
+  jaeger_endpoint: ""
+  log_level: "debug"
+  enable_metrics_export: false
+  metrics_export_interval: "30s"
+
+alerting:
+  enabled: false
+  slack_webhook: ""
+  pagerduty_key: ""
+  alert_on_failure_threshold: 5
+  alert_on_high_gas: false
+  alert_on_large_transaction: false
+
+chains:
+  # Polygon Amoy Testnet
+  - name: "polygon-amoy"
+    chain_type: "EVM"
+    environment: "testnet"
+    chain_id: "80002"
+    rpc_endpoints:
+      - "https://rpc-amoy.polygon.technology/"
+    bridge_contract: "0x0000000000000000000000000000000000000000"
+    start_block: 0
+    confirmation_blocks: 128
+    block_time: "2s"
+    max_gas_price: "500"
+    gas_limit_multiplier: 1.2
+    max_reorg_depth: 256
+    enabled: false
+
+  # BNB Smart Chain Testnet
+  - name: "bnb-testnet"
+    chain_type: "EVM"
+    environment: "testnet"
+    chain_id: "97"
+    rpc_endpoints:
+      - "https://data-seed-prebsc-1-s1.binance.org:8545/"
+    bridge_contract: "0x0000000000000000000000000000000000000000"
+    start_block: 0
+    confirmation_blocks: 15
+    block_time: "3s"
+    max_gas_price: "20"
+    gas_limit_multiplier: 1.2
+    max_reorg_depth: 30
+    enabled: false
+
+  # Avalanche Fuji Testnet
+  - name: "avalanche-fuji"
+    chain_type: "EVM"
+    environment: "testnet"
+    chain_id: "43113"
+    rpc_endpoints:
+      - "https://api.avax-test.network/ext/bc/C/rpc"
+    bridge_contract: "0x0000000000000000000000000000000000000000"
+    start_block: 0
+    confirmation_blocks: 10
+    block_time: "2s"
+    max_gas_price: "100"
+    gas_limit_multiplier: 1.2
+    max_reorg_depth: 20
+    enabled: false
+
+  # Ethereum Sepolia Testnet
+  - name: "ethereum-sepolia"
+    chain_type: "EVM"
+    environment: "testnet"
+    chain_id: "11155111"
+    rpc_endpoints:
+      - "https://ethereum-sepolia.publicnode.com"
+    bridge_contract: "0x0000000000000000000000000000000000000000"
+    start_block: 0
+    confirmation_blocks: 32
+    block_time: "12s"
+    max_gas_price: "100"
+    gas_limit_multiplier: 1.3
+    max_reorg_depth: 64
+    enabled: false
+
+  # Solana Devnet
+  - name: "solana-devnet"
+    chain_type: "SOLANA"
+    environment: "testnet"
+    network_id: "devnet"
+    rpc_endpoints:
+      - "https://api.devnet.solana.com"
+    ws_endpoint: "wss://api.devnet.solana.com"
+    bridge_program: "11111111111111111111111111111111"
+    start_slot: 0
+    confirmation_slots: 32
+    commitment: "finalized"
+    block_time: "400ms"
+    compute_unit_price: "1000"
+    max_retries: 3
+    poll_interval: "2s"
+    enabled: false
+
+  # NEAR Testnet
+  - name: "near-testnet"
+    chain_type: "NEAR"
+    environment: "testnet"
+    network_id: "testnet"
+    rpc_endpoints:
+      - "https://rpc.testnet.near.org"
+    bridge_contract: "bridge.testnet"
+    start_block: 0
+    confirmation_blocks: 3
+    block_time: "1s"
+    poll_interval: "2s"
+    enabled: false
