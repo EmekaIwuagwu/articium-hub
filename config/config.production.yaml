@@ -113,7 +113,7 @@ chains:
     max_gas_price: "20"
     gas_limit_multiplier: 1.2
     max_reorg_depth: 30
-    enabled: false
+    enabled: true
 
   # Avalanche Fuji Testnet
   - name: "avalanche-fuji"
@@ -129,7 +129,7 @@ chains:
     max_gas_price: "100"
     gas_limit_multiplier: 1.2
     max_reorg_depth: 20
-    enabled: false
+    enabled: true
 
   # Ethereum Sepolia Testnet
   - name: "ethereum-sepolia"
@@ -145,7 +145,7 @@ chains:
     max_gas_price: "100"
     gas_limit_multiplier: 1.3
     max_reorg_depth: 64
-    enabled: false
+    enabled: true
 
   # Solana Devnet
   - name: "solana-devnet"
@@ -163,7 +163,7 @@ chains:
     compute_unit_price: "1000"
     max_retries: 3
     poll_interval: "2s"
-    enabled: false
+    enabled: true
 
   # NEAR Testnet
   - name: "near-testnet"
@@ -177,4 +177,4 @@ chains:
     confirmation_blocks: 3
     block_time: "1s"
     poll_interval: "2s"
-    enabled: false
+    enabled: true
