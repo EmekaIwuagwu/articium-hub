@@ -51,14 +51,24 @@ echo "4️⃣  Setting up database user..."
 sudo -u postgres psql << EOF
 -- Drop and recreate user to ensure password is correct
 DROP USER IF EXISTS metabridge;
-CREATE USER metabridge WITH PASSWORD 'metabridge';
+CREATE USER metabridge WITH PASSWORD 'metabridge' SUPERUSER;
 
 -- Grant permissions
-ALTER USER metabridge CREATEDB;
 GRANT ALL PRIVILEGES ON DATABASE metabridge_prod TO metabridge;
 
 -- Show user
 \du metabridge
+EOF
+
+# Grant schema permissions
+echo "4️⃣b Granting schema permissions..."
+sudo -u postgres psql -d metabridge_prod << EOF
+-- Grant all privileges on public schema
+GRANT ALL ON SCHEMA public TO metabridge;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO metabridge;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO metabridge;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO metabridge;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO metabridge;
 EOF
 echo ""
 
