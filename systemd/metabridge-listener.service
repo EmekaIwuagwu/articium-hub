@@ -28,9 +28,6 @@ SyslogIdentifier=metabridge-listener
 # Security
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/root/projects/metabridge-engine-hub/logs
 
 [Install]
 WantedBy=multi-user.target
