@@ -9,12 +9,27 @@ echo ""
 
 # Start PostgreSQL
 echo "1️⃣  Starting PostgreSQL..."
-if systemctl is-active --quiet postgresql; then
-    echo "   ✓ PostgreSQL already running"
+
+# Try to find PostgreSQL service
+PG_SERVICE=""
+for service in postgresql postgresql-14 postgresql-15 postgresql-16 postgresql@14-main postgresql@15-main; do
+    if systemctl list-unit-files | grep -q "^${service}.service"; then
+        PG_SERVICE=$service
+        break
+    fi
+done
+
+if [ -z "$PG_SERVICE" ]; then
+    echo "   ✗ PostgreSQL service not found!"
+    echo "   → Please install PostgreSQL first:"
+    echo "     sudo bash scripts/install-dependencies.sh"
+    exit 1
+elif systemctl is-active --quiet "$PG_SERVICE"; then
+    echo "   ✓ PostgreSQL already running ($PG_SERVICE)"
 else
-    sudo systemctl start postgresql
+    sudo systemctl start "$PG_SERVICE"
     sleep 2
-    echo "   ✓ PostgreSQL started"
+    echo "   ✓ PostgreSQL started ($PG_SERVICE)"
 fi
 
 # Start Redis

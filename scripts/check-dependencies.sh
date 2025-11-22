@@ -59,7 +59,16 @@ if check_service "PostgreSQL" "localhost" "5432"; then
         echo -e "     ${YELLOW}⚠${NC}  Can connect but authentication may be required"
 else
     ISSUES=$((ISSUES + 1))
-    echo -e "     ${RED}→${NC} Start with: sudo systemctl start postgresql"
+    echo -e "     ${RED}→${NC} PostgreSQL is not running or not installed"
+
+    # Try to detect if it's just not running or not installed
+    if command -v psql >/dev/null 2>&1; then
+        echo -e "     ${YELLOW}→${NC} PostgreSQL is installed but not running"
+        echo -e "     ${YELLOW}→${NC} Try: sudo bash scripts/start-dependencies.sh"
+    else
+        echo -e "     ${RED}→${NC} PostgreSQL is not installed"
+        echo -e "     ${RED}→${NC} Install with: sudo bash scripts/install-dependencies.sh"
+    fi
 fi
 
 # Check NATS
