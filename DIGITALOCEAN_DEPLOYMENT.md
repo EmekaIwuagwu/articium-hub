@@ -4,6 +4,68 @@
 
 This guide will take you from SSH login to a fully running bridge in ~30 minutes.
 
+---
+
+## 📋 Quick Reference
+
+### What You'll Build
+- 5 Go binaries (API, Relayer, Listener, Batcher, Migrator)
+- Total binary size: ~106 MB
+- Expected build time: 2-5 minutes
+
+### Key Expected Responses
+
+**✅ Successful Compilation:**
+- No error messages
+- Commands complete silently (silence = success!)
+- Binary files created in `bin/` directory
+
+**✅ Successful Service Start:**
+- `systemctl status` shows "active (running)"
+- Health endpoint returns `{"status":"healthy"}`
+- All 6 chains show `"healthy": true`
+
+**✅ Successful Database Setup:**
+- Tables created: messages, batches, users, api_keys, routes, webhooks
+- Admin user exists
+- Database size: ~50-100 MB fresh install
+
+### Quick Health Check Commands
+
+```bash
+# Check all services at once
+sudo systemctl status metabridge-api metabridge-relayer | grep "Active:"
+# Expected: Active: active (running) for both
+
+# Check API is responding
+curl -s http://159.65.73.133:8080/health | grep status
+# Expected: "status":"healthy"
+
+# Check all chains
+curl -s http://159.65.73.133:8080/v1/chains/status | jq 'to_entries[] | {chain: .key, healthy: .value.healthy}'
+# Expected: All show "healthy": true
+```
+
+### Common Expected Outputs Reference
+
+| Command | Expected Output | Meaning |
+|---------|----------------|---------|
+| `go build ...` | (silence) | ✅ Compilation successful |
+| `systemctl status` | `Active: active (running)` | ✅ Service running |
+| `curl /health` | `{"status":"healthy"}` | ✅ API responding |
+| `docker ps` | `Up (healthy)` | ✅ Container running |
+| `psql -c "\dt"` | List of tables | ✅ Database initialized |
+
+### Detailed Documentation References
+
+For comprehensive compilation information, troubleshooting, and expected responses, see:
+- **Step 13**: Detailed compilation process and expected build outputs
+- **Step 16**: Comprehensive testing with all expected responses
+- `Documentations/COMPILATION_TEST_REPORT.md`: Full compilation report
+- `Documentations/BUILD_VERIFICATION.md`: Build verification checklist
+
+---
+
 ## Step 1: Connect to Your Droplet
 
 ```bash
@@ -397,29 +459,336 @@ sudo docker exec -it metabridge-postgres psql -U bridge_user -d metabridge_produ
 
 ## Step 13: Build Bridge Services
 
+This is a critical step where you compile all the Go binaries for your bridge system.
+
+### Build Process Overview
+
+The Metabridge Engine consists of 5 main binaries:
+1. **metabridge-api** - Main API server (handles HTTP requests)
+2. **metabridge-relayer** - Message relayer (processes cross-chain messages)
+3. **metabridge-listener** - Blockchain listener (monitors chain events)
+4. **metabridge-batcher** - Batch aggregator (optimizes gas costs)
+5. **metabridge-migrator** - Database migrator (sets up database schema)
+
+### Expected Build Time
+- **Total Time**: 2-5 minutes (depending on your server specs)
+- **Per Binary**: 30-60 seconds each
+- **Download Time**: Additional 1-2 minutes for first build (dependencies)
+
+### Build Commands
+
 ```bash
 cd ~/projects/metabridge-engine-hub
 
 # Create bin directory
 mkdir -p bin
 
-# Build API server
+# Build 1: API Server
 echo "🔨 Building API server..."
-go build -o bin/metabridge-api cmd/api/main.go
+CGO_ENABLED=0 go build -o bin/metabridge-api cmd/api/main.go
 
-# Build relayer
+# Expected Output:
+# (Downloading dependencies on first build - you'll see progress bars)
+# go: downloading github.com/ethereum/go-ethereum v1.13.8
+# go: downloading github.com/gorilla/mux v1.8.1
+# go: downloading github.com/rs/zerolog v1.31.0
+# ... (20-30 more packages)
+# (Then silence as it compiles - this is normal!)
+# (After 30-60 seconds, command completes with no output = SUCCESS)
+
+echo "✅ API server built"
+
+# Build 2: Relayer Service
 echo "🔨 Building relayer..."
-go build -o bin/metabridge-relayer cmd/relayer/main.go
+CGO_ENABLED=0 go build -o bin/metabridge-relayer cmd/relayer/main.go
 
-# Verify binaries
+# Expected Output:
+# (Faster this time since dependencies are cached)
+# (15-30 seconds of silence)
+# (Completes with no output = SUCCESS)
+
+echo "✅ Relayer built"
+
+# Build 3: Listener Service
+echo "🔨 Building listener..."
+CGO_ENABLED=0 go build -o bin/metabridge-listener cmd/listener/main.go
+
+# Expected Output:
+# (15-30 seconds of compilation)
+# (No output = SUCCESS)
+
+echo "✅ Listener built"
+
+# Build 4: Batcher Service
+echo "🔨 Building batcher..."
+CGO_ENABLED=0 go build -o bin/metabridge-batcher cmd/batcher/main.go
+
+# Expected Output:
+# (10-20 seconds of compilation)
+# (No output = SUCCESS)
+
+echo "✅ Batcher built"
+
+# Build 5: Database Migrator
+echo "🔨 Building migrator..."
+CGO_ENABLED=0 go build -o bin/metabridge-migrator cmd/migrator/main.go
+
+# Expected Output:
+# (10-20 seconds of compilation)
+# (No output = SUCCESS)
+
+echo "✅ Migrator built"
+
+echo ""
+echo "==================== BUILD VERIFICATION ===================="
+echo ""
+
+# Verify all binaries were created
 ls -lh bin/
 
-# You should see:
-# - metabridge-api
-# - metabridge-relayer
+# Expected Output:
+# total 106M
+# -rwxr-xr-x 1 root root 27M Nov 22 14:23 metabridge-api
+# -rwxr-xr-x 1 root root 13M Nov 22 14:24 metabridge-batcher
+# -rwxr-xr-x 1 root root 27M Nov 22 14:24 metabridge-listener
+# -rwxr-xr-x 1 root root 11M Nov 22 14:25 metabridge-migrator
+# -rwxr-xr-x 1 root root 28M Nov 22 14:23 metabridge-relayer
 
-echo "✅ Binaries built successfully"
+echo ""
+echo "Checking binary types..."
+file bin/*
+
+# Expected Output:
+# bin/metabridge-api:      ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=..., not stripped
+# bin/metabridge-batcher:  ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=..., not stripped
+# bin/metabridge-listener: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=..., not stripped
+# bin/metabridge-migrator: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=..., not stripped
+# bin/metabridge-relayer:  ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=..., not stripped
+
+echo ""
+echo "Testing binaries respond to --help..."
+
+# Test each binary
+bin/metabridge-api --help 2>&1 | head -5
+# Expected: Shows help text or "Usage:" message
+
+bin/metabridge-relayer --help 2>&1 | head -5
+# Expected: Shows help text or "Usage:" message
+
+echo ""
+echo "✅ All binaries built successfully!"
+echo ""
+echo "Binary Sizes:"
+du -h bin/* | column -t
+echo ""
+echo "Total Size: $(du -sh bin/ | awk '{print $1}')"
+echo ""
 ```
+
+### Alternative: Build All at Once Using Makefile
+
+```bash
+# Use the Makefile to build everything
+make build
+
+# Expected Output:
+# Building Go binaries...
+# CGO_ENABLED=0 go build -o bin/api ./cmd/api
+# CGO_ENABLED=0 go build -o bin/relayer ./cmd/relayer
+# CGO_ENABLED=0 go build -o bin/listener ./cmd/listener
+# CGO_ENABLED=0 go build -o bin/batcher ./cmd/batcher
+# CGO_ENABLED=0 go build -o bin/migrator ./cmd/migrator
+# Build complete! Binaries in ./bin/
+# total 106M
+# -rwxr-xr-x 1 root root 27M Nov 22 14:23 api
+# -rwxr-xr-x 1 root root 13M Nov 22 14:24 batcher
+# -rwxr-xr-x 1 root root 27M Nov 22 14:24 listener
+# -rwxr-xr-x 1 root root 11M Nov 22 14:25 migrator
+# -rwxr-xr-x 1 root root 28M Nov 22 14:23 relayer
+```
+
+### What Does "SUCCESS" Look Like?
+
+✅ **Successful Build Indicators:**
+- No error messages displayed
+- Command completes and returns to shell prompt
+- Binary file created in `bin/` directory
+- Binary is executable (shown as green in `ls` with colors)
+- Binary responds to `--help` flag
+- Binary shows "ELF 64-bit LSB executable" in `file` command
+
+❌ **Build Failure Indicators:**
+- Error messages containing "undefined:", "not found", "cannot find package"
+- No binary file created
+- Build process exits early
+- Red error text displayed
+
+### Common Build Issues & Solutions
+
+#### Issue 1: Cannot Download Packages
+
+**Error Message:**
+```
+go: github.com/ethereum/go-ethereum@v1.13.8: Get "https://proxy.golang.org/...": dial tcp: lookup proxy.golang.org: no such host
+```
+
+**Solution:**
+```bash
+# Check DNS settings
+cat /etc/resolv.conf
+
+# Fix DNS if needed
+echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
+echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf
+
+# Test connectivity
+ping -c 3 proxy.golang.org
+
+# Retry build
+go clean -modcache
+go build -o bin/metabridge-api cmd/api/main.go
+```
+
+#### Issue 2: Out of Memory
+
+**Error Message:**
+```
+signal: killed
+```
+
+**Solution:**
+```bash
+# Check available memory
+free -h
+
+# Add swap space if needed (2GB)
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+# Make permanent
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Retry build
+go build -o bin/metabridge-api cmd/api/main.go
+```
+
+#### Issue 3: Compilation Errors
+
+**Error Message:**
+```
+# github.com/EmekaIwuagwu/metabridge-hub/internal/api
+internal/api/handlers.go:123:45: undefined: SomeFunction
+```
+
+**Solution:**
+```bash
+# Make sure you're on the correct branch
+git status
+git branch
+
+# Pull latest code
+git pull origin main
+
+# Clean and rebuild
+go clean -cache
+go mod tidy
+go build -o bin/metabridge-api cmd/api/main.go
+```
+
+#### Issue 4: Permission Denied
+
+**Error Message:**
+```
+permission denied
+```
+
+**Solution:**
+```bash
+# Make bin directory writable
+chmod 755 bin/
+chmod 644 bin/*
+
+# Or run with sudo
+sudo go build -o bin/metabridge-api cmd/api/main.go
+```
+
+### Build Verification Checklist
+
+After building, verify everything is correct:
+
+```bash
+# ✅ 1. Check all 5 binaries exist
+ls bin/ | wc -l
+# Expected: 5
+
+# ✅ 2. Check total size is reasonable
+du -sh bin/
+# Expected: 100M-120M (statically linked binaries)
+
+# ✅ 3. Check binaries are executable
+ls -la bin/ | grep rwx
+# Expected: All 5 files show -rwxr-xr-x
+
+# ✅ 4. Check architecture matches your server
+file bin/metabridge-api
+# Expected: x86-64 (for most servers)
+# If you see "ARM aarch64", that's also fine (for ARM servers)
+
+# ✅ 5. Check binaries are statically linked
+ldd bin/metabridge-api
+# Expected: "not a dynamic executable" or "statically linked"
+
+# ✅ 6. Test binary execution
+bin/metabridge-api --version 2>&1
+# Expected: Version info or error message (but binary runs)
+
+# ✅ 7. Check Go build cache
+go clean -cache -n
+# Shows what would be cleaned (means cache exists)
+```
+
+### Performance Metrics
+
+**Expected Build Performance:**
+
+| Binary | Size | Build Time | Dependencies |
+|--------|------|------------|--------------|
+| metabridge-api | ~27 MB | 30-60s | High (HTTP, DB, chains) |
+| metabridge-relayer | ~28 MB | 30-60s | High (all chains, NATS) |
+| metabridge-listener | ~27 MB | 30-60s | High (all chains, events) |
+| metabridge-batcher | ~13 MB | 15-30s | Medium (batch logic) |
+| metabridge-migrator | ~11 MB | 10-20s | Low (DB only) |
+
+**Total:** ~106 MB, 2-5 minutes
+
+### Advanced: Optimized Build
+
+For production deployment with optimizations:
+
+```bash
+# Build with optimizations and version info
+VERSION=$(git describe --tags --always --dirty)
+BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
+GIT_COMMIT=$(git rev-parse HEAD)
+
+go build \
+  -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+  -trimpath \
+  -o bin/metabridge-api \
+  cmd/api/main.go
+
+# Explanation:
+# -ldflags="-s -w"  : Strip debug symbols (smaller binary)
+# -X main.Version   : Inject version information
+# -trimpath         : Remove file system paths from binary
+# Result: Smaller binaries (~20-25% reduction)
+```
+
+### Next Steps
+
+Once all binaries are built successfully, proceed to Step 14 to create systemd services that will run these binaries automatically.
 
 ## Step 14: Create Systemd Services
 
@@ -519,65 +888,301 @@ sudo ufw status verbose
 
 ## Step 16: Run Comprehensive Tests
 
+This section provides detailed tests to verify your deployment is working correctly. Each test includes the exact command, expected output, and what to do if the test fails.
+
 ### Test 1: Infrastructure Health Checks
 
+These tests verify that all your infrastructure services (PostgreSQL, NATS, Redis) are running properly.
+
 ```bash
+echo "========================================="
+echo "Test 1: Infrastructure Health Checks"
+echo "========================================="
+echo ""
+
 # Check all Docker containers are running
+echo "Checking Docker containers..."
 sudo docker compose -f ~/projects/metabridge-engine-hub/docker-compose.production.yaml ps
 
-# Expected output: All containers should show "Up" status
-# - metabridge-postgres  Up (healthy)
-# - metabridge-nats      Up (healthy)
-# - metabridge-redis     Up (healthy)
+# Expected output:
+# NAME                    IMAGE              COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+# metabridge-nats         nats:2.10          "/nats-server -js -m…"   nats       10 minutes ago   Up 10 minutes (healthy)   0.0.0.0:4222->4222/tcp, 0.0.0.0:8222->8222/tcp
+# metabridge-postgres     postgres:15        "docker-entrypoint.s…"   postgres   10 minutes ago   Up 10 minutes (healthy)   0.0.0.0:5432->5432/tcp
+# metabridge-redis        redis:7-alpine     "docker-entrypoint.s…"   redis      10 minutes ago   Up 10 minutes (healthy)   0.0.0.0:6379->6379/tcp
 
-# Test PostgreSQL connection
+# What to look for:
+# ✅ STATUS column shows "Up" for all containers
+# ✅ "(healthy)" appears next to each container
+# ❌ If "Exit" or "Restarting" appears, container has issues
+
+echo ""
+echo "Testing PostgreSQL connection..."
 sudo docker exec -it metabridge-postgres psql -U bridge_user -d metabridge_production -c "SELECT version();"
 
-# Expected: PostgreSQL version info
+# Expected output:
+#                                                           version
+# -----------------------------------------------------------------------------------------------------------------------------
+#  PostgreSQL 15.5 (Debian 15.5-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+# (1 row)
 
-# Test NATS connection
-curl http://localhost:8222/varz
+# ✅ Shows PostgreSQL 15.x version
+# ❌ If error "could not connect": Check container is running
 
-# Expected: JSON with NATS server stats
+echo ""
+echo "Testing NATS connection..."
+curl -s http://localhost:8222/varz | jq '.' | head -20
 
-# Test Redis connection
+# Expected output (JSON with NATS stats):
+# {
+#   "server_id": "NDJZ...",
+#   "server_name": "NDJZ...",
+#   "version": "2.10.0",
+#   "proto": 1,
+#   "git_commit": "...",
+#   "go": "go1.21.3",
+#   "host": "0.0.0.0",
+#   "port": 4222,
+#   "max_connections": 65536,
+#   "ping_interval": 120000000000,
+#   "ping_max": 2,
+#   "http_host": "0.0.0.0",
+#   "http_port": 8222,
+#   "https_port": 0,
+#   "auth_timeout": 1,
+#   "max_control_line": 4096,
+#   ...
+# }
+
+# ✅ Shows JSON with server stats and version 2.10.x
+# ❌ If "Connection refused": NATS container not running
+# Note: Install jq if not available: sudo apt install -y jq
+
+echo ""
+echo "Testing Redis connection..."
 sudo docker exec -it metabridge-redis redis-cli ping
 
-# Expected: PONG
+# Expected output:
+# PONG
+
+# ✅ Responds with "PONG"
+# ❌ If "Could not connect": Redis container not running
+
+echo ""
+echo "Testing Redis data operations..."
+sudo docker exec -it metabridge-redis redis-cli SET test_key "test_value"
+sudo docker exec -it metabridge-redis redis-cli GET test_key
+sudo docker exec -it metabridge-redis redis-cli DEL test_key
+
+# Expected output:
+# OK
+# "test_value"
+# (integer) 1
+
+# ✅ Redis can store and retrieve data
+# ❌ If errors: Check Redis logs
+
+echo ""
+echo "✅ All infrastructure services are healthy!"
+echo ""
 ```
 
 ### Test 2: API Health Checks
 
+These tests verify that your API server is running and responding to requests correctly.
+
 ```bash
+echo "========================================="
+echo "Test 2: API Health Checks"
+echo "========================================="
+echo ""
+
 # Test 1: Basic health endpoint
-curl http://159.65.73.133:8080/health
+echo "Testing basic health endpoint..."
+curl -s http://159.65.73.133:8080/health | jq '.'
 
 # Expected output:
-# {"status":"ok","version":"1.0.0","timestamp":"2025-11-20T..."}
+# {
+#   "status": "healthy",
+#   "timestamp": "2025-11-22T14:30:45Z",
+#   "version": "1.0.0",
+#   "uptime": 3600
+# }
 
-# Test 2: Detailed API status
-curl http://159.65.73.133:8080/v1/status
+# ✅ Status is "healthy"
+# ✅ Returns valid JSON
+# ✅ Timestamp is current
+# ❌ If "Connection refused": API server not running
+# ❌ If HTML error page: Wrong port or nginx issue
+# ❌ If timeout: Firewall blocking port 8080
 
-# Expected: Detailed status of all services
+echo ""
+echo "Testing with verbose output for debugging..."
+curl -v http://159.65.73.133:8080/health 2>&1 | grep -E '(HTTP|status)'
 
-# Test 3: Chain connectivity
-curl http://159.65.73.133:8080/v1/chains/status
+# Expected output:
+# > GET /health HTTP/1.1
+# < HTTP/1.1 200 OK
+# < Content-Type: application/json
+# {"status":"healthy",...}
 
-# Expected: JSON with all 6 chains and their RPC status
-# Should show which chains are connected/disconnected
+# ✅ HTTP/1.1 200 OK response
+# ❌ HTTP/1.1 404 Not Found: Route not configured
+# ❌ HTTP/1.1 500 Internal Server Error: Server crash
 
-# Test 4: Bridge statistics
-curl http://159.65.73.133:8080/v1/stats
+echo ""
+echo "Testing detailed API status..."
+curl -s http://159.65.73.133:8080/v1/status | jq '.'
 
-# Expected:
+# Expected output:
+# {
+#   "api": {
+#     "status": "healthy",
+#     "version": "1.0.0",
+#     "uptime_seconds": 3600
+#   },
+#   "database": {
+#     "status": "connected",
+#     "type": "postgresql",
+#     "ping_ms": 2
+#   },
+#   "nats": {
+#     "status": "connected",
+#     "url": "nats://localhost:4222",
+#     "servers": 1
+#   },
+#   "redis": {
+#     "status": "connected",
+#     "ping_ms": 1
+#   }
+# }
+
+# ✅ All services show "connected" or "healthy"
+# ❌ If any service shows "disconnected": Check that service
+# ❌ If database ping_ms > 100: Database performance issue
+
+echo ""
+echo "Testing chain connectivity..."
+curl -s http://159.65.73.133:8080/v1/chains/status | jq '.'
+
+# Expected output:
+# {
+#   "ethereum": {
+#     "chain_id": 11155111,
+#     "name": "Ethereum Sepolia",
+#     "type": "evm",
+#     "healthy": true,
+#     "rpc_url": "https://sepolia.infura.io/v3/...",
+#     "block_number": 5234567,
+#     "last_check": "2025-11-22T14:30:45Z",
+#     "latency_ms": 245
+#   },
+#   "polygon": {
+#     "chain_id": 80002,
+#     "name": "Polygon Amoy",
+#     "type": "evm",
+#     "healthy": true,
+#     "rpc_url": "https://rpc-amoy.polygon.technology/",
+#     "block_number": 12345678,
+#     "last_check": "2025-11-22T14:30:45Z",
+#     "latency_ms": 189
+#   },
+#   "bnb": {
+#     "chain_id": 97,
+#     "name": "BNB Testnet",
+#     "type": "evm",
+#     "healthy": true,
+#     "block_number": 34567890,
+#     "latency_ms": 156
+#   },
+#   "avalanche": {
+#     "chain_id": 43113,
+#     "name": "Avalanche Fuji",
+#     "type": "evm",
+#     "healthy": true,
+#     "block_number": 23456789,
+#     "latency_ms": 203
+#   },
+#   "solana": {
+#     "name": "Solana Devnet",
+#     "type": "solana",
+#     "healthy": true,
+#     "rpc_url": "https://api.devnet.solana.com",
+#     "slot": 287654321,
+#     "latency_ms": 178
+#   },
+#   "near": {
+#     "name": "NEAR Testnet",
+#     "type": "near",
+#     "healthy": true,
+#     "rpc_url": "https://rpc.testnet.near.org",
+#     "block_height": 123456789,
+#     "latency_ms": 312
+#   }
+# }
+
+# ✅ All chains show "healthy": true
+# ✅ Block numbers/slots are recent
+# ✅ Latency < 500ms (acceptable < 1000ms)
+# ⚠️ If healthy: false - RPC endpoint down or API key issue
+# ⚠️ If high latency (>1000ms) - Network congestion or slow RPC
+
+echo ""
+echo "Testing bridge statistics..."
+curl -s http://159.65.73.133:8080/v1/stats | jq '.'
+
+# Expected output (fresh deployment):
 # {
 #   "total_messages": 0,
 #   "pending_messages": 0,
+#   "processing_messages": 0,
 #   "completed_messages": 0,
 #   "failed_messages": 0,
-#   "total_volume": "0",
-#   "total_fees": "0"
+#   "total_volume_usd": "0",
+#   "total_fees_usd": "0",
+#   "success_rate": 0,
+#   "average_processing_time_seconds": 0,
+#   "chains": {
+#     "ethereum": {"sent": 0, "received": 0},
+#     "polygon": {"sent": 0, "received": 0},
+#     "bnb": {"sent": 0, "received": 0},
+#     "avalanche": {"sent": 0, "received": 0},
+#     "solana": {"sent": 0, "received": 0},
+#     "near": {"sent": 0, "received": 0}
+#   }
 # }
+
+# ✅ Returns valid stats structure
+# ✅ All values are 0 for fresh deployment
+# ❌ If error: Database connection issue
+
+echo ""
+echo "Testing API response times..."
+time curl -s http://159.65.73.133:8080/health > /dev/null
+
+# Expected output:
+# real    0m0.052s
+# user    0m0.012s
+# sys     0m0.008s
+
+# ✅ Response time < 100ms is excellent
+# ✅ Response time < 500ms is acceptable
+# ⚠️ Response time > 1s indicates performance issues
+
+echo ""
+echo "Testing CORS headers..."
+curl -s -I http://159.65.73.133:8080/health | grep -i 'access-control'
+
+# Expected output:
+# Access-Control-Allow-Origin: *
+# Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+# Access-Control-Allow-Headers: Content-Type, Authorization
+
+# ✅ CORS headers present (needed for web frontends)
+# ⚠️ If missing: Check .env.production CORS settings
+
+echo ""
+echo "✅ All API health checks passed!"
+echo ""
 ```
 
 ### Test 3: Authentication Tests
