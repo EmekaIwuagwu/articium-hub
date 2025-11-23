@@ -6,9 +6,9 @@ Wants=postgresql.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/root/projects/articium
+WorkingDirectory=PROJECT_ROOT_PLACEHOLDER
 Environment="PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/root/projects/articium/bin/api -config config/config.production.yaml
+ExecStart=PROJECT_ROOT_PLACEHOLDER/bin/api -config config/config.production.yaml
 Restart=always
 RestartSec=10
 StandardOutput=journal

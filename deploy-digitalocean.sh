@@ -330,16 +330,18 @@ echo ""
 
 echo "9️⃣  Installing systemd services..."
 
-# Copy service files
-sudo cp systemd/articium-api.service /etc/systemd/system/
-sudo cp systemd/articium-relayer.service /etc/systemd/system/
-sudo cp systemd/articium-batcher.service /etc/systemd/system/
-sudo cp systemd/articium-listener.service /etc/systemd/system/
+# Replace PROJECT_ROOT_PLACEHOLDER in service files and copy to systemd
+for service_file in systemd/*.service; do
+    service_name=$(basename "$service_file")
+    # Replace placeholder with actual project root and copy to systemd directory
+    sed "s|PROJECT_ROOT_PLACEHOLDER|$PROJECT_ROOT|g" "$service_file" | sudo tee "/etc/systemd/system/$service_name" > /dev/null
+    echo "   ✓ Installed $service_name"
+done
 
 # Reload systemd
 sudo systemctl daemon-reload
 
-echo "   ✓ Service files installed"
+echo "   ✓ All service files installed and configured"
 echo ""
 
 # ==============================================================================

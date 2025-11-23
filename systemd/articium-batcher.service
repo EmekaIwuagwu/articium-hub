@@ -7,8 +7,8 @@ Requires=postgresql.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/root/projects/articium
-ExecStart=/root/projects/articium/bin/batcher -config /root/projects/articium/config/config.production.yaml
+WorkingDirectory=PROJECT_ROOT_PLACEHOLDER
+ExecStart=PROJECT_ROOT_PLACEHOLDER/bin/batcher -config PROJECT_ROOT_PLACEHOLDER/config/config.production.yaml
 
 # Restart policy
 Restart=on-failure
