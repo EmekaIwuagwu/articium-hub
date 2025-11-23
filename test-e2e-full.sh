@@ -380,15 +380,21 @@ show_faucet_links() {
         echo "   📋 Address needed (create Aptos wallet)"
         echo ""
 
+        echo ""
         log_warning "After requesting from all faucets, press ENTER to continue..."
-        read -r
+        echo ""
 
+        # Force interactive read from terminal
+        read -r -p "Press ENTER when ready: " < /dev/tty
+
+        echo ""
         # Check balances
         log_info "Checking balances..."
         check_all_balances
 
+        echo ""
         log_warning "Do you have sufficient tokens on all chains? (yes/no)"
-        read -r response
+        read -r -p "Enter 'yes' to continue or 'no' to exit: " response < /dev/tty
 
         if [ "$response" != "yes" ]; then
             log_error "Insufficient funds. Please get more tokens and run the script again."
@@ -404,7 +410,7 @@ show_faucet_links() {
         done
         echo ""
         log_warning "Have you funded your wallet with real tokens? (yes/no)"
-        read -r response
+        read -r -p "Enter 'yes' to continue or 'no' to exit: " response < /dev/tty
 
         if [ "$response" != "yes" ]; then
             log_error "Please fund your wallet before continuing."
@@ -534,7 +540,7 @@ deploy_smart_contracts() {
         # Deploy to mainnets
         log_warning "⚠️  Deploying to MAINNET - This uses REAL money!"
         log_warning "Press ENTER to confirm or Ctrl+C to cancel..."
-        read -r
+        read -r -p "Press ENTER to confirm: " < /dev/tty
 
         node scripts/deploy-all-mainnet.js >> "$TEST_LOG" 2>&1
 
@@ -907,7 +913,7 @@ main() {
         log_error "THIS WILL USE REAL MONEY!"
         echo ""
         log_warning "Press Ctrl+C to cancel or ENTER to continue..."
-        read -r
+        read -r -p "Press ENTER to confirm: " < /dev/tty
         echo ""
     fi
 
