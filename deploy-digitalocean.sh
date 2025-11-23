@@ -2,9 +2,14 @@
 
 set -e
 
+# Detect project root directory
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "╔════════════════════════════════════════════════════════════╗"
 echo "║     Articium DigitalOcean Automated Deployment          ║"
 echo "╚════════════════════════════════════════════════════════════╝"
+echo ""
+echo "Project Directory: $PROJECT_ROOT"
 echo ""
 echo "This script will:"
 echo "  1. Install all dependencies (PostgreSQL, NATS, Redis)"
@@ -118,7 +123,7 @@ curl -s http://localhost:8222/varz > /dev/null && echo "   ✓ NATS server runni
     exit 1
 }
 
-cd /root/projects/articium
+cd "$PROJECT_ROOT"
 echo ""
 
 # ==============================================================================
