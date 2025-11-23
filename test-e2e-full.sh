@@ -488,7 +488,8 @@ async function main() {
 main();
 EOF
 
-    node check-balance.js "$WALLET_ADDRESS" "$NETWORK"
+    # Suppress ethers.js warnings/errors from stderr
+    node check-balance.js "$WALLET_ADDRESS" "$NETWORK" 2>/dev/null || true
 }
 
 deploy_smart_contracts() {
