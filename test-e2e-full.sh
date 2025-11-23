@@ -220,6 +220,7 @@ setup_test_environment() {
         cat > "$PROJECT_ROOT/test-wallets/generate-wallet.js" << 'EOF'
 const { Wallet } = require('ethers');
 const fs = require('fs');
+const path = require('path');
 
 const wallet = Wallet.createRandom();
 const walletInfo = {
@@ -229,7 +230,7 @@ const walletInfo = {
 };
 
 console.log(JSON.stringify(walletInfo, null, 2));
-fs.writeFileSync('test-wallets/wallet.json', JSON.stringify(walletInfo, null, 2));
+fs.writeFileSync(path.join(__dirname, 'wallet.json'), JSON.stringify(walletInfo, null, 2));
 EOF
 
         # Install ethers if needed
