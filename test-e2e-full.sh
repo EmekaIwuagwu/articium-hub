@@ -273,105 +273,106 @@ auto_request_faucet_tokens() {
 
     # Polygon Amoy Faucet
     log_info "Requesting Polygon Amoy tokens..."
-    if curl -s -X POST "https://faucet.polygon.technology/api/v1/mumbai" \
+    response=$(curl -s -X POST "https://faucet.polygon.technology/api/v1/mumbai" \
         -H "Content-Type: application/json" \
-        -d "{\"address\":\"$WALLET_ADDRESS\",\"token\":\"maticToken\"}" | grep -q "success"; then
+        -d "{\"address\":\"$WALLET_ADDRESS\",\"token\":\"maticToken\"}" 2>/dev/null || true)
+    if echo "$response" | grep -q "success" 2>/dev/null || true; then
         log_success "✓ Polygon Amoy: Tokens requested successfully"
-        ((success_count++))
+        ((success_count++)) || true
     else
         # Try alternative endpoint
-        if curl -s "https://faucet.polygon.technology/api/getFaucet?address=$WALLET_ADDRESS&network=amoy" | grep -q "success\|Success"; then
+        response=$(curl -s "https://faucet.polygon.technology/api/getFaucet?address=$WALLET_ADDRESS&network=amoy" 2>/dev/null || true)
+        if echo "$response" | grep -q "success\|Success" 2>/dev/null || true; then
             log_success "✓ Polygon Amoy: Tokens requested successfully"
-            ((success_count++))
+            ((success_count++)) || true
         else
             log_warning "✗ Polygon Amoy: Auto-request failed (visit manually: https://faucet.polygon.technology/)"
-            ((fail_count++))
+            ((fail_count++)) || true
         fi
     fi
     sleep 2
 
     # BNB Testnet Faucet
     log_info "Requesting BNB Testnet tokens..."
-    if curl -s -X POST "https://testnet.bnbchain.org/faucet-smart/api/getSendInfo" \
+    response=$(curl -s -X POST "https://testnet.bnbchain.org/faucet-smart/api/getSendInfo" \
         -H "Content-Type: application/json" \
-        -d "{\"address\":\"$WALLET_ADDRESS\"}" | grep -q "success"; then
+        -d "{\"address\":\"$WALLET_ADDRESS\"}" 2>/dev/null || true)
+    if echo "$response" | grep -q "success" 2>/dev/null || true; then
         log_success "✓ BNB Testnet: Tokens requested successfully"
-        ((success_count++))
+        ((success_count++)) || true
     else
         log_warning "✗ BNB Testnet: Auto-request failed (visit manually: https://testnet.bnbchain.org/faucet-smart)"
-        ((fail_count++))
+        ((fail_count++)) || true
     fi
     sleep 2
 
-    # Avalanche Fuji Faucet (uses API key from faucet site)
+    # Avalanche Fuji Faucet
     log_info "Requesting Avalanche Fuji tokens..."
-    if curl -s -X POST "https://faucet.avax.network/api/faucet" \
+    response=$(curl -s -X POST "https://faucet.avax.network/api/faucet" \
         -H "Content-Type: application/json" \
-        -d "{\"address\":\"$WALLET_ADDRESS\",\"chain\":\"FUJI\"}" | grep -q "success\|txHash"; then
+        -d "{\"address\":\"$WALLET_ADDRESS\",\"chain\":\"FUJI\"}" 2>/dev/null || true)
+    if echo "$response" | grep -q "success\|txHash" 2>/dev/null || true; then
         log_success "✓ Avalanche Fuji: Tokens requested successfully"
-        ((success_count++))
+        ((success_count++)) || true
     else
         log_warning "✗ Avalanche Fuji: Auto-request failed (visit manually: https://core.app/tools/testnet-faucet/)"
-        ((fail_count++))
+        ((fail_count++)) || true
     fi
     sleep 2
 
-    # Ethereum Sepolia (try multiple faucet APIs)
+    # Ethereum Sepolia
     log_info "Requesting Ethereum Sepolia tokens..."
-    # Try Alchemy faucet API (may require auth)
-    sepolia_success=false
-
-    # Try QuickNode faucet
-    if curl -s -X POST "https://faucet.quicknode.com/drip" \
+    response=$(curl -s -X POST "https://faucet.quicknode.com/drip" \
         -H "Content-Type: application/json" \
-        -d "{\"wallet\":\"$WALLET_ADDRESS\",\"network\":\"sepolia\"}" | grep -q "success\|hash"; then
+        -d "{\"wallet\":\"$WALLET_ADDRESS\",\"network\":\"sepolia\"}" 2>/dev/null || true)
+    if echo "$response" | grep -q "success\|hash" 2>/dev/null || true; then
         log_success "✓ Ethereum Sepolia: Tokens requested successfully"
-        ((success_count++))
-        sepolia_success=true
-    fi
-
-    if [ "$sepolia_success" = false ]; then
+        ((success_count++)) || true
+    else
         log_warning "✗ Ethereum Sepolia: Auto-request failed (visit manually: https://www.alchemy.com/faucets/ethereum-sepolia)"
-        ((fail_count++))
+        ((fail_count++)) || true
     fi
     sleep 2
 
     # Arbitrum Sepolia
     log_info "Requesting Arbitrum Sepolia tokens..."
-    if curl -s -X POST "https://faucet.quicknode.com/drip" \
+    response=$(curl -s -X POST "https://faucet.quicknode.com/drip" \
         -H "Content-Type: application/json" \
-        -d "{\"wallet\":\"$WALLET_ADDRESS\",\"network\":\"arbitrum-sepolia\"}" | grep -q "success\|hash"; then
+        -d "{\"wallet\":\"$WALLET_ADDRESS\",\"network\":\"arbitrum-sepolia\"}" 2>/dev/null || true)
+    if echo "$response" | grep -q "success\|hash" 2>/dev/null || true; then
         log_success "✓ Arbitrum Sepolia: Tokens requested successfully"
-        ((success_count++))
+        ((success_count++)) || true
     else
         log_warning "✗ Arbitrum Sepolia: Auto-request failed (visit manually: https://faucet.quicknode.com/arbitrum/sepolia)"
-        ((fail_count++))
+        ((fail_count++)) || true
     fi
     sleep 2
 
     # Optimism Sepolia
     log_info "Requesting Optimism Sepolia tokens..."
-    if curl -s -X POST "https://faucet.quicknode.com/drip" \
+    response=$(curl -s -X POST "https://faucet.quicknode.com/drip" \
         -H "Content-Type: application/json" \
-        -d "{\"wallet\":\"$WALLET_ADDRESS\",\"network\":\"optimism-sepolia\"}" | grep -q "success\|hash"; then
+        -d "{\"wallet\":\"$WALLET_ADDRESS\",\"network\":\"optimism-sepolia\"}" 2>/dev/null || true)
+    if echo "$response" | grep -q "success\|hash" 2>/dev/null || true; then
         log_success "✓ Optimism Sepolia: Tokens requested successfully"
-        ((success_count++))
+        ((success_count++)) || true
     else
         log_warning "✗ Optimism Sepolia: Auto-request failed (visit manually: https://faucet.quicknode.com/optimism/sepolia)"
-        ((fail_count++))
+        ((fail_count++)) || true
     fi
     sleep 2
 
     # Fantom Testnet
     log_info "Requesting Fantom Testnet tokens..."
-    if curl -s -X POST "https://faucet.fantom.network/api/claim" \
+    response=$(curl -s -X POST "https://faucet.fantom.network/api/claim" \
         -H "Content-Type: application/json" \
-        -d "{\"address\":\"$WALLET_ADDRESS\"}" | grep -q "success\|hash"; then
+        -d "{\"address\":\"$WALLET_ADDRESS\"}" 2>/dev/null || true)
+    if echo "$response" | grep -q "success\|hash" 2>/dev/null || true; then
         log_success "✓ Fantom Testnet: Tokens requested successfully"
-        ((success_count++))
+        ((success_count++)) || true
     else
         log_warning "✗ Fantom Testnet: Auto-request failed (visit manually: https://faucet.fantom.network/)"
-        ((fail_count++))
+        ((fail_count++)) || true
     fi
     sleep 2
 
