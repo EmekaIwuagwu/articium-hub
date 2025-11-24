@@ -40,6 +40,16 @@ export const TESTNET_CHAINS = [
     color: 'from-blue-500 to-indigo-600'
   },
   {
+    id: 'solana-devnet',
+    name: 'Solana Devnet',
+    symbol: 'SOL',
+    chainId: null,
+    rpcUrl: 'https://api.devnet.solana.com',
+    explorerUrl: 'https://explorer.solana.com/?cluster=devnet',
+    icon: '🌐',
+    color: 'from-green-400 to-emerald-500'
+  },
+  {
     id: 'arbitrum-sepolia',
     name: 'Arbitrum Sepolia',
     symbol: 'ETH',

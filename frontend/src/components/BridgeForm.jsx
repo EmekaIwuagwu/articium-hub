@@ -12,6 +12,7 @@ const BridgeForm = () => {
   const [fromChain, setFromChain] = useState(TESTNET_CHAINS[0]);
   const [toChain, setToChain] = useState(TESTNET_CHAINS[1]);
   const [amount, setAmount] = useState('');
+  const [destinationAddress, setDestinationAddress] = useState('');
   const [balance, setBalance] = useState('0');
   const [isLoading, setIsLoading] = useState(false);
   const [txHash, setTxHash] = useState('');
@@ -90,7 +91,7 @@ const BridgeForm = () => {
         from_chain: fromChain.id,
         to_chain: toChain.id,
         from_address: account,
-        to_address: account,
+        to_address: destinationAddress || account,
         amount: amount,
         tx_hash: receipt.hash,
       });
@@ -174,6 +175,31 @@ const BridgeForm = () => {
           onSelect={setToChain}
           disabled={TESTNET_CHAINS.filter(c => c.id !== fromChain.id)}
         />
+      </div>
+
+      {/* Destination Address */}
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <label className="block text-sm font-medium text-gray-300">Destination Address (Optional)</label>
+          {account && (
+            <button
+              onClick={() => setDestinationAddress(account)}
+              className="text-xs text-blue-400 hover:text-blue-300"
+            >
+              Use My Address
+            </button>
+          )}
+        </div>
+        <input
+          type="text"
+          value={destinationAddress}
+          onChange={(e) => setDestinationAddress(e.target.value)}
+          placeholder={account || "Enter destination address or leave empty for your wallet"}
+          className="input-field"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Leave empty to send to your own address on the destination chain
+        </p>
       </div>
 
       {/* Amount Input */}
