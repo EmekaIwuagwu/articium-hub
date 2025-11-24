@@ -627,7 +627,7 @@ EOF
 deploy_smart_contracts() {
     log_step "Deploying smart contracts to $NETWORK..."
 
-    cd "$PROJECT_ROOT"
+    cd "$PROJECT_ROOT/contracts/evm"
 
     # Install dependencies
     if [ ! -d "node_modules" ]; then
