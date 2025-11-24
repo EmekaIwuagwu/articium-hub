@@ -12,7 +12,8 @@ const BridgeForm = () => {
   const [fromChain, setFromChain] = useState(TESTNET_CHAINS[0]);
   const [toChain, setToChain] = useState(TESTNET_CHAINS[1]);
   const [amount, setAmount] = useState('');
-  const [destinationAddress, setDestinationAddress] = useState('');
+  const [fromAddress, setFromAddress] = useState('');
+  const [toAddress, setToAddress] = useState('');
   const [balance, setBalance] = useState('0');
   const [isLoading, setIsLoading] = useState(false);
   const [txHash, setTxHash] = useState('');
@@ -27,6 +28,10 @@ const BridgeForm = () => {
   useEffect(() => {
     if (account && provider) {
       fetchBalance();
+      // Auto-populate from address when wallet is connected
+      if (!fromAddress) {
+        setFromAddress(account);
+      }
     }
   }, [account, provider, chainId]);
 
@@ -46,8 +51,13 @@ const BridgeForm = () => {
   };
 
   const handleBridge = async () => {
-    if (!account) {
-      toast.error('Please connect your wallet first');
+    if (!fromAddress) {
+      toast.error('Please enter a from address or connect your wallet');
+      return;
+    }
+
+    if (!toAddress) {
+      toast.error('Please enter a destination address');
       return;
     }
 
@@ -96,8 +106,8 @@ const BridgeForm = () => {
       const bridgeData = await initiateBridge({
         from_chain: fromChain.id,
         to_chain: toChain.id,
-        from_address: account,
-        to_address: destinationAddress || account,
+        from_address: fromAddress,
+        to_address: toAddress,
         amount: amount,
         tx_hash: receipt.hash,
       });
@@ -183,13 +193,38 @@ const BridgeForm = () => {
         />
       </div>
 
-      {/* Destination Address */}
+      {/* From Address */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
-          <label className="block text-sm font-medium text-gray-300">Destination Address (Optional)</label>
+          <label className="block text-sm font-medium text-gray-300">From Address</label>
           {account && (
             <button
-              onClick={() => setDestinationAddress(account)}
+              onClick={() => setFromAddress(account)}
+              className="text-xs text-blue-400 hover:text-blue-300"
+            >
+              Use Connected Wallet
+            </button>
+          )}
+        </div>
+        <input
+          type="text"
+          value={fromAddress}
+          onChange={(e) => setFromAddress(e.target.value)}
+          placeholder={account || "Enter source wallet address"}
+          className="input-field"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          {account ? `Connected: ${account}` : 'Enter the address you want to send from'}
+        </p>
+      </div>
+
+      {/* To Address */}
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <label className="block text-sm font-medium text-gray-300">To Address</label>
+          {account && (
+            <button
+              onClick={() => setToAddress(account)}
               className="text-xs text-blue-400 hover:text-blue-300"
             >
               Use My Address
@@ -198,13 +233,13 @@ const BridgeForm = () => {
         </div>
         <input
           type="text"
-          value={destinationAddress}
-          onChange={(e) => setDestinationAddress(e.target.value)}
-          placeholder={account || "Enter destination address or leave empty for your wallet"}
+          value={toAddress}
+          onChange={(e) => setToAddress(e.target.value)}
+          placeholder="Enter destination address on target chain"
           className="input-field"
         />
         <p className="text-xs text-gray-500 mt-1">
-          Leave empty to send to your own address on the destination chain
+          The address that will receive tokens on {toChain.name}
         </p>
       </div>
 
@@ -241,7 +276,7 @@ const BridgeForm = () => {
       {/* Bridge Button */}
       <button
         onClick={handleBridge}
-        disabled={!account || isLoading || !amount}
+        disabled={!fromAddress || !toAddress || isLoading || !amount}
         className="btn-primary w-full flex items-center justify-center space-x-2"
       >
         {isLoading ? (

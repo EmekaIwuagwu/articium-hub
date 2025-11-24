@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -36,7 +36,17 @@ api.interceptors.response.use(
 // Bridge API endpoints
 export const initiateBridge = async (bridgeData) => {
   try {
-    const response = await api.post('/bridge/initiate', bridgeData);
+    // Transform frontend format to backend format
+    const backendRequest = {
+      source_chain: bridgeData.from_chain,
+      dest_chain: bridgeData.to_chain,
+      token_address: '0x0000000000000000000000000000000000000000', // Native token
+      amount: bridgeData.amount,
+      recipient: bridgeData.to_address,
+      sender: bridgeData.from_address,
+    };
+
+    const response = await api.post('/bridge/token', backendRequest);
     return response;
   } catch (error) {
     throw error;
@@ -45,7 +55,7 @@ export const initiateBridge = async (bridgeData) => {
 
 export const checkBridgeStatus = async (bridgeId) => {
   try {
-    const response = await api.get(`/bridge/status/${bridgeId}`);
+    const response = await api.get(`/messages/${bridgeId}/status`);
     return response;
   } catch (error) {
     throw error;
@@ -54,8 +64,9 @@ export const checkBridgeStatus = async (bridgeId) => {
 
 export const getUserTransactions = async (address) => {
   try {
-    const response = await api.get(`/bridge/transactions/${address}`);
-    return response.transactions || [];
+    // Use tracking query endpoint to get user's messages
+    const response = await api.get(`/track/query?sender=${address}`);
+    return response.messages || [];
   } catch (error) {
     console.error('Failed to fetch transactions:', error);
     return [];
