@@ -33,7 +33,7 @@ const BridgeForm = () => {
         setFromAddress(account);
       }
     }
-  }, [account, provider, chainId]);
+  }, [account, provider, chainId, fromChain]);
 
   const fetchBalance = async () => {
     try {
@@ -66,18 +66,19 @@ const BridgeForm = () => {
       return;
     }
 
-    if (parseFloat(amount) > parseFloat(balance)) {
-      toast.error('Insufficient balance');
-      return;
-    }
-
     if (fromChain.id === toChain.id) {
       toast.error('Source and destination chains cannot be the same');
       return;
     }
 
-    // Check if we're on the correct network
-    if (chainId !== fromChain.chainId) {
+    // Warning for balance check (only if wallet is connected and on the right chain)
+    if (account && chainId === fromChain.chainId && parseFloat(amount) > parseFloat(balance)) {
+      toast.error(`Insufficient balance. You have ${parseFloat(balance).toFixed(4)} ${fromChain.symbol}`);
+      return;
+    }
+
+    // Check if we're on the correct network (only for EVM chains)
+    if (account && fromChain.chainId && chainId !== fromChain.chainId) {
       toast.error(`Please switch to ${fromChain.name} network`);
       const switched = await switchNetwork(fromChain.chainId);
       if (!switched) return;
@@ -247,9 +248,19 @@ const BridgeForm = () => {
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <label className="block text-sm font-medium text-gray-300">Amount</label>
-          {account && (
-            <span className="text-sm text-gray-400">
+          {account && chainId === fromChain.chainId && (
+            <span className="text-sm text-green-400">
               Balance: {parseFloat(balance).toFixed(4)} {fromChain.symbol}
+            </span>
+          )}
+          {account && chainId !== fromChain.chainId && fromChain.chainId && (
+            <span className="text-sm text-yellow-400">
+              ⚠️ Switch to {fromChain.name} to see balance
+            </span>
+          )}
+          {!account && (
+            <span className="text-sm text-gray-500">
+              Connect wallet to see balance
             </span>
           )}
         </div>
