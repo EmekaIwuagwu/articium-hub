@@ -8,7 +8,7 @@ import ChainSelector from './ChainSelector';
 import { initiateBridge, checkBridgeStatus } from '../services/api';
 
 const BridgeForm = () => {
-  const { account, provider, chainId, switchNetwork } = useWallet();
+  const { account, provider, chainId, switchNetwork, getSigner } = useWallet();
   const [fromChain, setFromChain] = useState(TESTNET_CHAINS[0]);
   const [toChain, setToChain] = useState(TESTNET_CHAINS[1]);
   const [amount, setAmount] = useState('');
@@ -89,7 +89,9 @@ const BridgeForm = () => {
       // Send transaction on source chain
       toast.loading('Preparing transaction...', { id: 'bridge-tx' });
 
-      const signer = await provider.getSigner();
+      // Get signer using the new getSigner method from WalletContext
+      const signer = await getSigner();
+
       const tx = await signer.sendTransaction({
         to: account, // In a real bridge, this would be the bridge contract
         value: parseEther(amount),

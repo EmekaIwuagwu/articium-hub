@@ -234,6 +234,49 @@ export const WalletProvider = ({ children }) => {
     }
   };
 
+  const getSigner = async () => {
+    if (!account) {
+      throw new Error('No wallet connected. Please connect your wallet first.');
+    }
+
+    if (walletType !== 'metamask') {
+      throw new Error('Signer is only available for MetaMask wallet. Please connect MetaMask.');
+    }
+
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed.');
+    }
+
+    try {
+      // Create a fresh provider instance to ensure we have the latest state
+      const freshProvider = new BrowserProvider(window.ethereum);
+
+      // Get the signer from the fresh provider
+      const signer = await freshProvider.getSigner();
+
+      // Verify the signer has the correct address
+      const signerAddress = await signer.getAddress();
+      if (signerAddress.toLowerCase() !== account.toLowerCase()) {
+        throw new Error('Wallet address mismatch. Please reconnect your wallet.');
+      }
+
+      return signer;
+    } catch (error) {
+      console.error('Failed to get signer:', error);
+
+      // Provide more specific error messages
+      if (error.code === 4100) {
+        throw new Error('Please unlock your MetaMask wallet.');
+      } else if (error.code === 4001) {
+        throw new Error('Request rejected. Please approve the connection request.');
+      } else if (error.message.includes('missing provider')) {
+        throw new Error('MetaMask connection lost. Please reconnect your wallet.');
+      }
+
+      throw error;
+    }
+  };
+
   const value = {
     account,
     provider,
@@ -246,6 +289,7 @@ export const WalletProvider = ({ children }) => {
     connectPhantom,
     disconnectWallet,
     switchNetwork,
+    getSigner,
   };
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
