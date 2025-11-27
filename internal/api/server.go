@@ -14,6 +14,7 @@ import (
 	"github.com/EmekaIwuagwu/articium-hub/internal/auth"
 	"github.com/EmekaIwuagwu/articium-hub/internal/config"
 	"github.com/EmekaIwuagwu/articium-hub/internal/database"
+	"github.com/EmekaIwuagwu/articium-hub/internal/queue"
 	"github.com/EmekaIwuagwu/articium-hub/internal/routing"
 	"github.com/EmekaIwuagwu/articium-hub/internal/types"
 	"github.com/EmekaIwuagwu/articium-hub/internal/webhooks"
@@ -29,6 +30,7 @@ type Server struct {
 	server          *http.Server
 	logger          zerolog.Logger
 	clients         map[string]types.UniversalClient
+	queue           queue.Queue
 	webhookRegistry *webhooks.Registry
 	webhookDelivery *webhooks.DeliveryService
 	trackingService *webhooks.TrackingService
@@ -42,6 +44,7 @@ func NewServer(
 	cfg *config.Config,
 	db *database.DB,
 	clients map[string]types.UniversalClient,
+	messageQueue queue.Queue,
 	logger zerolog.Logger,
 ) *Server {
 	router := mux.NewRouter()
@@ -65,6 +68,7 @@ func NewServer(
 		router:          router,
 		logger:          logger.With().Str("component", "api").Logger(),
 		clients:         clients,
+		queue:           messageQueue,
 		webhookRegistry: webhookRegistry,
 		webhookDelivery: webhookDelivery,
 		trackingService: trackingService,

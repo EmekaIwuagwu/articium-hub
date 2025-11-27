@@ -361,19 +361,45 @@ func (p *Processor) buildEVMTokenUnlockTx(msg *types.CrossChainMessage, chainCfg
 		return nil, fmt.Errorf("failed to pack function call: %w", err)
 	}
 
-	// Create transaction
-	// In production, you would:
-	// 1. Get nonce from account
-	// 2. Estimate gas
-	// 3. Get current gas price
-	// 4. Build proper transaction with all parameters
+	// Get signer address
+	signerAddr, err := p.getEVMSignerAddress(msg.DestinationChain.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get signer address: %w", err)
+	}
 
+	// Get nonce from account
+	nonce, err := p.getEVMNonce(ctx, msg.DestinationChain.Name, signerAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nonce: %w", err)
+	}
+
+	// Get current gas price
+	gasPrice, err := p.getEVMGasPrice(ctx, msg.DestinationChain.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	// Estimate gas limit for the transaction
+	bridgeAddr := common.HexToAddress(chainCfg.BridgeContract)
+	gasLimit, err := p.estimateEVMGas(ctx, msg.DestinationChain.Name, signerAddr, bridgeAddr, data)
+	if err != nil {
+		// Use a reasonable default if estimation fails
+		p.logger.Warn().Err(err).Msg("Gas estimation failed, using default")
+		gasLimit = 300000
+	}
+
+	// Apply gas limit multiplier if configured
+	if chainCfg.GasLimitMultiplier > 0 {
+		gasLimit = uint64(float64(gasLimit) * chainCfg.GasLimitMultiplier)
+	}
+
+	// Create transaction with actual values
 	tx := ethTypes.NewTransaction(
-		0, // nonce - should be fetched
-		common.HexToAddress(chainCfg.BridgeContract),
-		big.NewInt(0),           // value
-		300000,                  // gas limit - should be estimated
-		big.NewInt(20000000000), // gas price - should be fetched
+		nonce,
+		bridgeAddr,
+		big.NewInt(0), // value
+		gasLimit,
+		gasPrice,
 		data,
 	)
 
@@ -637,9 +663,11 @@ func (p *Processor) buildSolanaTokenUnlockTx(ctx context.Context, msg *types.Cro
 		DataBytes: instructionData,
 	}
 
-	// Get recent blockhash (would need to call Solana client)
-	// For now, use a placeholder
-	recentBlockhash := solana.Hash{} // In production, fetch from network
+	// Get recent blockhash from Solana network
+	recentBlockhash, err := p.getRecentBlockhashFromClient(ctx, msg.DestinationChain.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recent blockhash: %w", err)
+	}
 
 	// Build transaction
 	tx, err := solana.NewTransaction(
@@ -832,6 +860,108 @@ func (p *Processor) buildNEARNFTUnlockTx(ctx context.Context, msg *types.CrossCh
 	// Build similar transaction structure as token unlock
 	// Placeholder implementation
 	return argsJSON, nil
+}
+
+// getRecentBlockhashFromClient fetches recent blockhash from Solana client
+func (p *Processor) getRecentBlockhashFromClient(ctx context.Context, chainName string) (solana.Hash, error) {
+	client, ok := p.clients[chainName]
+	if !ok {
+		return solana.Hash{}, fmt.Errorf("client not found for chain: %s", chainName)
+	}
+
+	// Type assert to Solana client
+	type SolanaBlockhashGetter interface {
+		GetRecentBlockhash(ctx context.Context) (solana.Hash, error)
+	}
+
+	if solanaClient, ok := client.(SolanaBlockhashGetter); ok {
+		return solanaClient.GetRecentBlockhash(ctx)
+	}
+
+	return solana.Hash{}, fmt.Errorf("client does not support GetRecentBlockhash")
+}
+
+// getEVMSignerAddress gets the address of the EVM signer
+func (p *Processor) getEVMSignerAddress(chainName string) (common.Address, error) {
+	signer, ok := p.signers[chainName]
+	if !ok {
+		return common.Address{}, fmt.Errorf("signer not found for chain: %s", chainName)
+	}
+
+	addrStr, err := signer.GetAddress(types.ChainTypeEVM)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to get signer address: %w", err)
+	}
+
+	return common.HexToAddress(addrStr), nil
+}
+
+// getEVMNonce fetches the nonce for an EVM address
+func (p *Processor) getEVMNonce(ctx context.Context, chainName string, address common.Address) (uint64, error) {
+	client, ok := p.clients[chainName]
+	if !ok {
+		return 0, fmt.Errorf("client not found for chain: %s", chainName)
+	}
+
+	// Type assert to EVM client
+	type EVMNonceGetter interface {
+		GetNonce(ctx context.Context, address common.Address) (uint64, error)
+	}
+
+	if evmClient, ok := client.(EVMNonceGetter); ok {
+		return evmClient.GetNonce(ctx, address)
+	}
+
+	return 0, fmt.Errorf("client does not support GetNonce")
+}
+
+// getEVMGasPrice fetches the current gas price for an EVM chain
+func (p *Processor) getEVMGasPrice(ctx context.Context, chainName string) (*big.Int, error) {
+	client, ok := p.clients[chainName]
+	if !ok {
+		return nil, fmt.Errorf("client not found for chain: %s", chainName)
+	}
+
+	// Type assert to EVM client
+	type EVMGasPriceGetter interface {
+		SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	}
+
+	if evmClient, ok := client.(EVMGasPriceGetter); ok {
+		return evmClient.SuggestGasPrice(ctx)
+	}
+
+	return nil, fmt.Errorf("client does not support SuggestGasPrice")
+}
+
+// estimateEVMGas estimates gas for an EVM transaction
+func (p *Processor) estimateEVMGas(ctx context.Context, chainName string, from, to common.Address, data []byte) (uint64, error) {
+	client, ok := p.clients[chainName]
+	if !ok {
+		return 0, fmt.Errorf("client not found for chain: %s", chainName)
+	}
+
+	// Type assert to EVM client
+	type EVMGasEstimator interface {
+		EstimateGas(ctx context.Context, msg interface{}) (uint64, error)
+	}
+
+	if evmClient, ok := client.(EVMGasEstimator); ok {
+		// Create call message
+		type CallMsg struct {
+			From common.Address
+			To   *common.Address
+			Data []byte
+		}
+		callMsg := CallMsg{
+			From: from,
+			To:   &to,
+			Data: data,
+		}
+		return evmClient.EstimateGas(ctx, callMsg)
+	}
+
+	return 0, fmt.Errorf("client does not support EstimateGas")
 }
 
 // getSolanaSignerPublicKey extracts the public key from a Solana signer

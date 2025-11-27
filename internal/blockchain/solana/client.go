@@ -335,3 +335,25 @@ func (c *Client) GetProgramAccounts(ctx context.Context, programID solana.Public
 
 	return nil, fmt.Errorf("failed to get program accounts from all endpoints")
 }
+
+// GetRecentBlockhash retrieves a recent blockhash for transaction building
+func (c *Client) GetRecentBlockhash(ctx context.Context) (solana.Hash, error) {
+	commitment := c.getCommitment()
+
+	for _, client := range c.rpcClients {
+		result, err := client.GetRecentBlockhash(ctx, commitment)
+		if err != nil {
+			c.logger.Warn().Err(err).Msg("Failed to get recent blockhash")
+			continue
+		}
+
+		if result != nil && result.Value != nil {
+			c.logger.Debug().
+				Str("blockhash", result.Value.Blockhash.String()).
+				Msg("Retrieved recent blockhash")
+			return result.Value.Blockhash, nil
+		}
+	}
+
+	return solana.Hash{}, fmt.Errorf("failed to get recent blockhash from all endpoints")
+}

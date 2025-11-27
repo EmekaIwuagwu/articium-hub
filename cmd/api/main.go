@@ -13,6 +13,7 @@ import (
 	"github.com/EmekaIwuagwu/articium-hub/internal/blockchain"
 	"github.com/EmekaIwuagwu/articium-hub/internal/config"
 	"github.com/EmekaIwuagwu/articium-hub/internal/database"
+	"github.com/EmekaIwuagwu/articium-hub/internal/queue"
 	"github.com/rs/zerolog"
 )
 
@@ -63,8 +64,29 @@ func main() {
 		Int("clients", len(clients)).
 		Msg("Blockchain clients initialized")
 
+	// Initialize message queue
+	var messageQueue queue.Queue
+	if cfg.Queue.Enabled {
+		var err error
+		messageQueue, err = queue.NewNATSQueue(&cfg.Queue, logger)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to initialize message queue, API will continue without queue")
+			messageQueue = nil
+		} else {
+			logger.Info().
+				Str("type", cfg.Queue.Type).
+				Msg("Message queue initialized")
+		}
+	} else {
+		logger.Info().Msg("Message queue disabled in configuration")
+		messageQueue = nil
+	}
+	if messageQueue != nil {
+		defer messageQueue.Close()
+	}
+
 	// Create API server
-	server := api.NewServer(cfg, db, clients, logger)
+	server := api.NewServer(cfg, db, clients, messageQueue, logger)
 
 	// Start server in goroutine
 	go func() {

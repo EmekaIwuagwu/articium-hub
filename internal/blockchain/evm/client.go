@@ -464,6 +464,26 @@ func (c *Client) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return gasPrice, nil
 }
 
+// GetNonce returns the pending nonce for an address
+func (c *Client) GetNonce(ctx context.Context, address common.Address) (uint64, error) {
+	var nonce uint64
+
+	err := c.executeWithFailover(ctx, func(client *ethclient.Client) error {
+		n, err := client.PendingNonceAt(ctx, address)
+		if err != nil {
+			return err
+		}
+		nonce = n
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return nonce, nil
+}
+
 // ChainID returns the chain ID
 func (c *Client) ChainID(ctx context.Context) (*big.Int, error) {
 	var chainID *big.Int

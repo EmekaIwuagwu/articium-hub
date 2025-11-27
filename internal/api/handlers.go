@@ -110,22 +110,110 @@ func (s *Server) handleBridgeToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if chains exist
-	if _, exists := s.clients[req.SourceChain]; !exists {
+	sourceClient, sourceExists := s.clients[req.SourceChain]
+	if !sourceExists {
 		respondError(w, http.StatusBadRequest, "invalid source chain", nil)
 		return
 	}
-	if _, exists := s.clients[req.DestinationChain]; !exists {
+	destClient, destExists := s.clients[req.DestinationChain]
+	if !destExists {
 		respondError(w, http.StatusBadRequest, "invalid destination chain", nil)
 		return
 	}
 
-	// TODO: Create and queue bridge message
-	// This would be implemented by the relayer service
+	// Get chain info
+	sourceChainInfo := sourceClient.GetChainInfo()
+	destChainInfo := destClient.GetChainInfo()
+
+	// Determine token standard based on source chain type
+	var tokenStandard string
+	switch sourceChainInfo.Type {
+	case types.ChainTypeEVM:
+		tokenStandard = "ERC20"
+	case types.ChainTypeSolana:
+		tokenStandard = "SPL"
+	case types.ChainTypeNEAR:
+		tokenStandard = "NEP141"
+	default:
+		tokenStandard = "UNKNOWN"
+	}
+
+	// Create payload
+	payload := types.TokenTransferPayload{
+		TokenAddress: types.Address{
+			Raw:      req.TokenAddress,
+			Type:     string(sourceChainInfo.Type),
+			Standard: tokenStandard,
+		},
+		Amount:        req.Amount,
+		TokenStandard: tokenStandard,
+		Decimals:      18, // Default, should be fetched from token contract
+	}
+
+	// Create sender address (use provided or default)
+	senderAddress := req.Sender
+	if senderAddress == "" {
+		senderAddress = "0x0000000000000000000000000000000000000000" // Placeholder
+	}
+
+	// Create cross-chain message
+	msg, err := types.NewCrossChainMessage(
+		types.MessageTypeTokenTransfer,
+		sourceChainInfo,
+		destChainInfo,
+		types.Address{
+			Raw:      senderAddress,
+			Type:     string(sourceChainInfo.Type),
+			Standard: tokenStandard,
+		},
+		types.Address{
+			Raw:      req.Recipient,
+			Type:     string(destChainInfo.Type),
+			Standard: tokenStandard,
+		},
+		payload,
+	)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("Failed to create cross-chain message")
+		respondError(w, http.StatusInternalServerError, "failed to create message", err)
+		return
+	}
+
+	// Set required signatures based on config
+	msg.RequiredSignatures = s.config.Security.RequiredSignatures
+
+	// Save message to database
+	if err := s.db.SaveMessage(r.Context(), msg); err != nil {
+		s.logger.Error().Err(err).Str("message_id", msg.ID).Msg("Failed to save message to database")
+		respondError(w, http.StatusInternalServerError, "failed to save message", err)
+		return
+	}
+
+	s.logger.Info().
+		Str("message_id", msg.ID).
+		Str("source", req.SourceChain).
+		Str("destination", req.DestinationChain).
+		Msg("Message saved to database")
+
+	// Publish message to queue for processing
+	if s.queue != nil {
+		if err := s.queue.Publish(r.Context(), msg); err != nil {
+			s.logger.Error().Err(err).Str("message_id", msg.ID).Msg("Failed to publish message to queue")
+			// Don't return error - message is saved in DB and can be processed later
+		} else {
+			s.logger.Info().
+				Str("message_id", msg.ID).
+				Msg("Message published to queue")
+		}
+	} else {
+		s.logger.Warn().Msg("Queue not available, message saved but not queued")
+	}
 
 	respondJSON(w, http.StatusAccepted, map[string]interface{}{
-		"status":  "pending",
-		"message": "Bridge request received and will be processed",
-		"request": req,
+		"status":     "pending",
+		"message":    "Bridge request received and queued for processing",
+		"message_id": msg.ID,
+		"request":    req,
 	})
 }
 
